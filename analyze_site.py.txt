@@ -1,0 +1,55 @@
+from scrapling.fetchers import StealthyFetcher
+import json
+
+def analyze_website(url):
+    print(f"[*] جاري الاتصال بالموقع وتخطي الحمايات: {url}")
+    
+    # 1. جلب الصفحة باستخدام المتصفح المخفي
+    # نستخدم network_idle=True لضمان تحميل كل ملفات الجافاسكريبت والـ API بالكامل
+    page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
+    
+    print("[+] تم جلب الصفحة بنجاح!\n")
+
+    # 2. حفظ الكود المصدري (HTML) بالكامل في ملف محلي
+    html_content = page.text
+    with open("cyera_source_code.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("[*] تم حفظ الكود المصدري في ملف: cyera_source_code.html\n")
+
+    # 3. استخراج التقنيات المستخدمة (من خلال ملفات JavaScript)
+    print("--- التقنيات وملفات JavaScript المستخدمة ---")
+    scripts = page.css('script')
+    js_files = set()
+    for script in scripts:
+        # البحث عن رابط الملف في خاصية src
+        src = script.attrib.get('src')
+        if src:
+            js_files.add(src)
+    
+    for js in js_files:
+        print(f"- {js}")
+        # تلميح: إذا رأيت مجلدات مثل /_next/ فهذا يعني أن الموقع مبرمج بـ Next.js
+        # وإذا رأيت nuxt فهذا يعني Vue.js وهكذا.
+
+    # 4. استخراج البيانات الوصفية (Meta Tags) لمعرفة المزيد من الأدوات
+    print("\n--- البيانات الوصفية (Meta Tags) ---")
+    meta_tags = page.css('meta')
+    for meta in meta_tags:
+        name = meta.attrib.get('name') or meta.attrib.get('property')
+        content = meta.attrib.get('content')
+        if name and content:
+            print(f"{name}: {content}")
+            # تلميح: ابحث عن name="generator" لأنه يخبرك أحياناً باسم إطار العمل أو نظام إدارة المحتوى (CMS)
+
+    # 5. جلب الروابط الخارجية (APIs أو خدمات تتبع)
+    print("\n--- بعض الروابط الخارجية (External Links/APIs) ---")
+    links = page.css('link')
+    for link in links:
+        rel = link.attrib.get('rel')
+        href = link.attrib.get('href')
+        if rel in ['preconnect', 'dns-prefetch', 'stylesheet'] and href:
+            print(f"[{rel}]: {href}")
+
+if __name__ == "__main__":
+    target_url = "https://secure-the-unknown.cyera.com/"
+    analyze_website(target_url)
